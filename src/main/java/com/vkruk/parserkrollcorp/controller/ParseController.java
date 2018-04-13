@@ -33,6 +33,10 @@ public class ParseController {
         return "ok";
     }
 
-
+    @GetMapping(value = "/parse_all")
+    public String parseLinksAndProducts(){
+        parserService.parseLinksAndProducts(null);
+        return "ok";
+    }
 
 }
