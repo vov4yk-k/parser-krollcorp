@@ -32,6 +32,7 @@ import java.util.*;
 public class ParserService {
 
     private ProductLinkRepository linkRepository;
+
     private ProductRepository productRepository;
 
     private static final Logger logger = LogManager.getLogger(ParserService.class);
@@ -41,6 +42,7 @@ public class ParserService {
     private String cookie;
 
     private Environment env;
+
 
     @Autowired
     public ParserService(ProductLinkRepository linkRepository, ProductRepository productRepository, Environment env) {
@@ -69,6 +71,100 @@ public class ParserService {
 
     }
 
+    public void parseLinksAndProducts(String params) {
+
+        ArrayList<String> parsedSkus = parseLinksByParameters(params);
+
+        parseProductsBySKUs(parsedSkus);
+
+    }
+
+    public ArrayList<String> parseLinksByParameters(String params){
+
+        ArrayList<ProductLink> productLinks = new ArrayList<>();
+
+        int pageNumber = 1;
+        boolean parseNextPage = true;
+        while(parseNextPage){
+            try {
+                parseNextPage = parsePage(100, pageNumber, productLinks, params);
+                pageNumber++;
+            } catch (IOException e) {
+                e.printStackTrace();
+                parseNextPage = false;
+            }
+        }
+
+        ArrayList<String> skus = new ArrayList<>();
+        productLinks.forEach((productLink) -> {
+            List<ProductLink> storedLinks = linkRepository.findProductLinksByProductSKU(productLink.getProductSKU());
+            if (storedLinks.isEmpty()){
+                linkRepository.save(productLink);
+            }
+            skus.add(productLink.getProductSKU());
+        });
+
+        productLinks.clear();
+
+        return skus;
+    }
+
+    public void parseProductsBySKUs(ArrayList<String> skuList){
+
+        Iterable<ProductLink> productLinks = linkRepository.findProductLinksByProductSKUIn(skuList);
+        HashMap<String, ProductLink> links = new HashMap<String, ProductLink>();
+        productLinks.forEach(productLink -> {
+            if(productRepository.findProductsBySku(productLink.getProductSKU()).isEmpty()){
+                links.put(productLink.getProductSKU(), productLink);
+            }
+        });
+
+        Map<String, String> cookies = new HashMap<>();
+        cookies.put("Cookie", this.cookie);
+
+        links.forEach((sku, productLink) -> {
+
+
+            logger.info(sku + " - started");
+
+            Document doc = null;
+
+            try {
+                doc = Jsoup.connect("https://www.krollcorp.com" + productLink.getLink())
+                        .cookie("Cookie",this.cookie)
+                        .timeout(60 * 10000)
+                        .get();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            Product parentProduct = getProductFromPage(doc);
+            parentProduct.setSku(sku);
+
+            Elements elem = doc.select(".isoption");
+            if (elem.size() > 0) {
+                ArrayList<Product> products = createProductsByParametrs(doc);
+                products.forEach(newProduct -> {
+                    newProduct.fillByParrent(parentProduct);
+                    links.remove(newProduct.getSku());
+                });
+                productRepository.save(products);
+            } else {
+                productRepository.save(parentProduct);
+                links.remove(parentProduct.getSku());
+            }
+
+
+            logger.info(sku + " - ok");
+            return;
+        });
+
+    }
+
+
+
+
     public void parseAll(int firstPage, int lastPage, String manufacturer) {
 
         ArrayList<ProductLink> productLinks = new ArrayList<>();
@@ -96,7 +192,7 @@ public class ParserService {
 
     }
 
-    public void parsePage(int size, int index, ArrayList<ProductLink> list, String manufacturer) throws IOException {
+    public boolean parsePage(int size, int index, ArrayList<ProductLink> list, String manufacturer) throws IOException {
 
         String address = "https://www.krollcorp.com/facetsearch?PageSize=" + size + "&PageIndex=" + index;
 
@@ -121,6 +217,8 @@ public class ParserService {
             list.add(new ProductLink(sku, link));
 
         });
+
+        return products.size()>0;
 
     }
 
@@ -174,7 +272,9 @@ public class ParserService {
             logger.info(sku + " - ok");
             return;
         });
+
     }
+
 
     public ProductInfo getProductInfo(String productbvin, String parameters) {
 
@@ -296,7 +396,6 @@ public class ParserService {
     }
 
     public String getPropertyName(Document productPage, String option) {
-
 
         String labelFor = option.substring(3,option.length());
         Elements labels = productPage.select("label");
