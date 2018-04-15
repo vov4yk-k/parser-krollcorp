@@ -178,4 +178,11 @@ public class ProductInfo {
         return price;
     }
 
+    public long getUPCCodeLong() {
+        long code = 0;
+        try {
+            code = Long.parseLong(UPCCode);
+        }catch (ArithmeticException e){ }
+        return code;
+    }
 }
