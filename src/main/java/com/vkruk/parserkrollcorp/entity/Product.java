@@ -15,7 +15,7 @@ import java.util.Set;
 @Table(name = "product")
 public class Product {
 
-    private @Id @GeneratedValue long id;        //#upcCode
+    private @Id  long id;        //#upcCode  @GeneratedValue
     private String upc;
     private String productbvin;                 //#productbvin
     private String name;                        //itemprop="name"
@@ -69,6 +69,7 @@ public class Product {
 
     public Product(ProductInfo productInfo){
 
+        this.id = productInfo.getUPCCodeLong();
         this.imageUrl = productInfo.getImageUrl();
         this.price = productInfo.getPrice();
         this.sku = productInfo.getSku();

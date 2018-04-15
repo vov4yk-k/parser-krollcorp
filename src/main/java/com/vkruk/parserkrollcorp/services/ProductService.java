@@ -19,10 +19,18 @@ public class ProductService {
     }
 
     public List<ParentProductResponse> getProducts(){
+        List<String> bpvins = productRepository.getProductbvin();
+        return getProductsBybpvins(bpvins);
+    }
+
+    public List<ParentProductResponse> getProductsByParseId(long parseId){
+        List<String> bpvins = productRepository.getProductbvinListByParseId(parseId);
+        return getProductsBybpvins(bpvins);
+    }
+
+    public List<ParentProductResponse> getProductsBybpvins(List<String> bpvins){
 
         ArrayList<ParentProductResponse> result = new ArrayList<>();
-
-        List<String> bpvins = productRepository.getProductbvin();
 
         for (String productbpvin: bpvins) {
 

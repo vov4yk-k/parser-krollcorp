@@ -1,9 +1,11 @@
 package com.vkruk.parserkrollcorp.services;
 
+import com.vkruk.parserkrollcorp.entity.Parsing;
 import com.vkruk.parserkrollcorp.entity.Product;
 import com.vkruk.parserkrollcorp.model.ProductInfo;
 import com.vkruk.parserkrollcorp.entity.ProductLink;
 import com.vkruk.parserkrollcorp.entity.ProductProperty;
+import com.vkruk.parserkrollcorp.repository.ParsingRepository;
 import com.vkruk.parserkrollcorp.repository.ProductLinkRepository;
 import com.vkruk.parserkrollcorp.repository.ProductRepository;
 import org.apache.log4j.LogManager;
@@ -19,6 +21,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -31,9 +34,13 @@ import java.util.*;
 @Service
 public class ParserService {
 
-    private ProductLinkRepository linkRepository;
+    private final ProductLinkRepository linkRepository;
 
-    private ProductRepository productRepository;
+    private final ProductRepository productRepository;
+
+    private final ParsingRepository parsingRepository;
+
+    private final ParsingInfoService infoService;
 
     private static final Logger logger = LogManager.getLogger(ParserService.class);
 
@@ -45,9 +52,12 @@ public class ParserService {
 
 
     @Autowired
-    public ParserService(ProductLinkRepository linkRepository, ProductRepository productRepository, Environment env) {
+    public ParserService(ProductLinkRepository linkRepository,ProductRepository productRepository,
+                         ParsingRepository parsingRepository, Environment env, ParsingInfoService infoService) {
         this.linkRepository = linkRepository;
         this.productRepository = productRepository;
+        this.parsingRepository = parsingRepository;
+        this.infoService = infoService;
         this.env = env;
         signIn();
     }
@@ -71,15 +81,24 @@ public class ParserService {
 
     }
 
-    public void parseLinksAndProducts(String params) {
+    @Async
+    public void parseLinksAndProducts(long parsingId, String[] paramsArray) {
 
-        ArrayList<String> parsedSkus = parseLinksByParameters(params);
+        infoService.inProgress(parsingId, "Started!");
 
-        parseProductsBySKUs(parsedSkus);
+        for (String params : paramsArray) {
+            parseLinksByParameters(parsingId, params);
+        }
+
+        infoService.inProgress(parsingId, "Parsed "+linkRepository.getProductLinksByParseId(parsingId).size()+" links!");
+
+        parseProductsByParsingId(parsingId);
+
+        infoService.finished(parsingId, "Parsed "+productRepository.getProductbvinListByParseId(parsingId).size()+" products!");
 
     }
 
-    public ArrayList<String> parseLinksByParameters(String params){
+    public void parseLinksByParameters(long parsingId, String params){
 
         ArrayList<ProductLink> productLinks = new ArrayList<>();
 
@@ -90,40 +109,44 @@ public class ParserService {
                 parseNextPage = parsePage(100, pageNumber, productLinks, params);
                 pageNumber++;
             } catch (IOException e) {
-                e.printStackTrace();
+                infoService.error(parsingId,"Error on page "+pageNumber);
+                infoService.error(parsingId, e.getMessage());
                 parseNextPage = false;
             }
         }
 
-        ArrayList<String> skus = new ArrayList<>();
         productLinks.forEach((productLink) -> {
             List<ProductLink> storedLinks = linkRepository.findProductLinksByProductSKU(productLink.getProductSKU());
             if (storedLinks.isEmpty()){
                 linkRepository.save(productLink);
             }
-            skus.add(productLink.getProductSKU());
+            parsingRepository.save(new Parsing(parsingId, productLink.getProductSKU()));
         });
+
+        infoService.inProgress(parsingId, "Parsed "+productLinks.size()+" links with parameters "+params);
 
         productLinks.clear();
 
-        return skus;
     }
 
-    public void parseProductsBySKUs(ArrayList<String> skuList){
+    public void parseProductsByParsingId(long parsingId){
 
-        Iterable<ProductLink> productLinks = linkRepository.findProductLinksByProductSKUIn(skuList);
+        List <ProductLink> productLinks = linkRepository.getProductLinksByParseId(parsingId);
         HashMap<String, ProductLink> links = new HashMap<String, ProductLink>();
         productLinks.forEach(productLink -> {
-            if(productRepository.findProductsBySku(productLink.getProductSKU()).isEmpty()){
+            //if(productRepository.findProductsBySku(productLink.getProductSKU()).isEmpty()){
                 links.put(productLink.getProductSKU(), productLink);
-            }
+            //}
         });
 
         Map<String, String> cookies = new HashMap<>();
         cookies.put("Cookie", this.cookie);
 
-        links.forEach((sku, productLink) -> {
+        infoService.inProgress(parsingId, "Product links parsing");
 
+
+        final int linksCount = links.size();
+        links.forEach((sku, productLink) -> {
 
             logger.info(sku + " - started");
 
@@ -131,12 +154,13 @@ public class ParserService {
 
             try {
                 doc = Jsoup.connect("https://www.krollcorp.com" + productLink.getLink())
-                        .cookie("Cookie",this.cookie)
+                        .cookie("Cookie", this.cookie)
                         .timeout(60 * 10000)
                         .get();
 
             } catch (IOException e) {
-                e.printStackTrace();
+                infoService.error(parsingId, "Connection error. Product link " + productLink.getLink());
+                infoService.error(parsingId, e.getMessage());
             }
 
             Product parentProduct = getProductFromPage(doc);
@@ -144,7 +168,7 @@ public class ParserService {
 
             Elements elem = doc.select(".isoption");
             if (elem.size() > 0) {
-                ArrayList<Product> products = createProductsByParametrs(doc);
+                ArrayList<Product> products = createProducts(doc);
                 products.forEach(newProduct -> {
                     newProduct.fillByParrent(parentProduct);
                     links.remove(newProduct.getSku());
@@ -155,49 +179,21 @@ public class ParserService {
                 links.remove(parentProduct.getSku());
             }
 
-
             logger.info(sku + " - ok");
-            return;
+
+            infoService.inProgressUpdate(parsingId, "Parsing products - " + (1 - (double)links.size()/linksCount)*100 + "%");
+
+
         });
 
     }
 
-
-
-
-    public void parseAll(int firstPage, int lastPage, String manufacturer) {
-
-        ArrayList<ProductLink> productLinks = new ArrayList<>();
-        try {
-            int i = firstPage;
-            while (i < lastPage) {
-
-                logger.info("Start page " + i);
-                parsePage(100, i, productLinks, manufacturer);
-                logger.info("Stop page " + i + ". Parsed " + productLinks.size());
-
-                logger.info("Start store");
-                productLinks.forEach((productLink) -> {
-                    linkRepository.save(productLink);
-                });
-                logger.info("Stored");
-                productLinks.clear();
-
-                i++;
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    public boolean parsePage(int size, int index, ArrayList<ProductLink> list, String manufacturer) throws IOException {
+    public boolean parsePage(int size, int index, ArrayList<ProductLink> list, String params) throws IOException {
 
         String address = "https://www.krollcorp.com/facetsearch?PageSize=" + size + "&PageIndex=" + index;
 
-        if (!manufacturer.isEmpty()) {
-            address = address + "&f_manufacturer=" + manufacturer;
+        if (!params.isEmpty()) {
+            address = address + "&" + params;
         }
 
         Document doc = Jsoup.connect(address).timeout(60 * 10000).get();
@@ -219,59 +215,6 @@ public class ParserService {
         });
 
         return products.size()>0;
-
-    }
-
-    public void parseLinks() {
-
-        Iterable<ProductLink> productLinks = linkRepository.findAll();
-        HashMap<String, ProductLink> links = new HashMap<String, ProductLink>();
-        productLinks.forEach(productLink -> {
-            if(productRepository.findProductsBySku(productLink.getProductSKU()).isEmpty()){
-                links.put(productLink.getProductSKU(), productLink);
-            }
-        });
-
-        Map<String, String> cookies = new HashMap<>();
-        cookies.put("Cookie", this.cookie);
-
-        links.forEach((sku, productLink) -> {
-
-
-            logger.info(sku + " - started");
-
-            Document doc = null;
-
-            try {
-                doc = Jsoup.connect("https://www.krollcorp.com" + productLink.getLink())
-                        .cookie("Cookie",this.cookie)
-                        .timeout(60 * 10000)
-                        .get();
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            Product parentProduct = getProductFromPage(doc);
-            parentProduct.setSku(sku);
-
-            Elements elem = doc.select(".isoption");
-            if (elem.size() > 0) {
-                ArrayList<Product> products = createProductsByParametrs(doc);
-                products.forEach(newProduct -> {
-                    newProduct.fillByParrent(parentProduct);
-                    links.remove(newProduct.getSku());
-                });
-                productRepository.save(products);
-            } else {
-                productRepository.save(parentProduct);
-                links.remove(parentProduct.getSku());
-            }
-
-
-            logger.info(sku + " - ok");
-            return;
-        });
 
     }
 
@@ -313,7 +256,7 @@ public class ParserService {
         return pp;
     }
 
-    public ArrayList<Product> createProductsByParametrs(Document productPage) {
+    public ArrayList<Product> createProducts(Document productPage) {
 
         ArrayList<Product> products = new ArrayList<Product>();
 
