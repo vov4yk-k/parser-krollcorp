@@ -31,7 +31,7 @@ public class SwaggerConfig {
         return new ApiInfo(
                 "Krollcorp product parser",
                 "Parse product information",
-                "0.9",
+                "1.0",
                 "",
                 new Contact("Volodymyr Kruk", "", "krukvova@gmail.com"),
                 "Apache License Version 2.0", "https://www.apache.org/licenses/LICENSE-2.0", Collections.emptyList()
