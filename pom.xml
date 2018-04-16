@@ -80,6 +80,7 @@
     </dependencies>
 
 	<build>
+        <finalName>krollkorp-parser-srv</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

@@ -6,7 +6,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest
+@SpringBootTest({"db.port=3306",
+		"db.username=root",
+		"server.port=5050",
+		"db.password=root",
+		"db.schema=products",
+		"db.address=localhost"})
 public class ParserKrollcorpApplicationTests {
 
 	@Test
