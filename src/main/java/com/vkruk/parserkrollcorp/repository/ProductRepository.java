@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends CrudRepository<Product,Long> {
 
+
     @Query(value = "select product.productbvin FROM product group by productbvin", nativeQuery = true)
     List<String> getProductbvin();
 
@@ -29,4 +30,6 @@ public interface ProductRepository extends CrudRepository<Product,Long> {
                     "FROM product " +
                     "WHERE sku IN (select parsing.sku from parsing where parsing.parsing_id = :parsingId) ", nativeQuery = true)
     List<Product> getProductsByParseId(@Param("parsingId") long parsingId);
+
+
 }

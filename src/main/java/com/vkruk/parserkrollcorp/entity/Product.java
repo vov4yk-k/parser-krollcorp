@@ -19,6 +19,7 @@ public class Product {
     private String upc;
     private String productbvin;                 //#productbvin
     private String name;                        //itemprop="name"
+    private String productGroup;
     private String manufacturerPartNumber;      //#isHazardous
     private boolean isHazardous;                //#manufacturerPartNumber
     private String countryofOrigin;             //#countryofOrigin
@@ -45,7 +46,7 @@ public class Product {
                    boolean isHazardous, String countryofOrigin, String productWeight,
                    String description, String imageUrl, boolean isValid, String price,
                    String sku, String listPrice, String shortDescription, String stockMessage,
-                   String brand, String upc) {
+                   String brand, String upc, String productGroup) {
 
         this.id = id;
         this.productbvin = productbvin;
@@ -64,7 +65,7 @@ public class Product {
         this.stockMessage = stockMessage;
         this.brand = brand;
         this.upc = upc;
-
+        this.productGroup = productGroup;
     }
 
     public Product(ProductInfo productInfo){
@@ -215,7 +216,6 @@ public class Product {
         return sku;
     }
 
-
     public String getBrand() {
         return brand;
     }
@@ -236,9 +236,16 @@ public class Product {
         return properties;
     }
 
-
     public void setProperties(Set<ProductProperty> properties) {
         this.properties = properties;
+    }
+
+    public String getProductGroup() {
+        return productGroup;
+    }
+
+    public void setProductGroup(String productGroup) {
+        this.productGroup = productGroup;
     }
 
     public void addProperty(ProductProperty productProperty){

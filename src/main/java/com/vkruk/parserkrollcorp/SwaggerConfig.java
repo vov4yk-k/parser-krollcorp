@@ -15,6 +15,7 @@ import static springfox.documentation.builders.PathSelectors.regex;
 @Configuration
 @EnableSwagger2
 public class SwaggerConfig {
+
     @Bean
     public Docket api() {
         return new Docket(DocumentationType.SWAGGER_2)
@@ -30,7 +31,7 @@ public class SwaggerConfig {
         return new ApiInfo(
                 "Krollcorp product parser",
                 "Parse product information",
-                "0.7",
+                "0.9",
                 "",
                 new Contact("Volodymyr Kruk", "", "krukvova@gmail.com"),
                 "Apache License Version 2.0", "https://www.apache.org/licenses/LICENSE-2.0", Collections.emptyList()
