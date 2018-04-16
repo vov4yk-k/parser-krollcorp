@@ -1,5 +1,7 @@
 package com.vkruk.parserkrollcorp.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.vkruk.parserkrollcorp.repository.ParsingRepository;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +16,12 @@ import java.util.Date;
 @Entity(name = "ParsingInfo")
 public class ParsingInfo {
 
-    private @Id @GeneratedValue long id;
+    @Id
+    @GeneratedValue
+    @JsonIgnore
+    private long id;
+
+    @JsonFormat(timezone = "GMT+03:00")
     private Date date;
     private long parsingId;
     private String status;

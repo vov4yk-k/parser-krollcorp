@@ -9,6 +9,7 @@ public class ProductResponse {
     private  String id;
     private  Codes codes;
     private String name;
+    private String group;
     private String brand;
     private String sdesc;
     private String desc;
@@ -25,6 +26,7 @@ public class ProductResponse {
         this.id = product.getProductbvin();
         this.codes = new Codes(product);
         this.name = product.getName();
+        this.group = product.getProductGroup();
         this.brand = product.getBrand();
         this.sdesc = product.getShortDescription();
         this.desc = product.getDescription();
@@ -59,6 +61,14 @@ public class ProductResponse {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
     }
 
     public String getBrand() {
@@ -152,4 +162,5 @@ public class ProductResponse {
         });
 
     }
+
 }

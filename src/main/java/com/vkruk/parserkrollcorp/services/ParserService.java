@@ -84,17 +84,28 @@ public class ParserService {
     @Async
     public void parseLinksAndProducts(long parsingId, String[] paramsArray) {
 
-        infoService.inProgress(parsingId, "Started!");
+        try {
 
-        for (String params : paramsArray) {
-            parseLinksByParameters(parsingId, params);
+            infoService.inProgress(parsingId, "Started!");
+
+            for (String params : paramsArray) {
+                parseLinksByParameters(parsingId, params);
+            }
+
+            infoService.inProgress(parsingId, "Parsed "+linkRepository.getProductLinksByParseId(parsingId).size()+" links!");
+
+            parseProductsByParsingId(parsingId);
+
+        }catch (Exception e){
+            infoService.error(parsingId, "Parsing fail!");
+            infoService.error(parsingId, e.getMessage());
         }
 
-        infoService.inProgress(parsingId, "Parsed "+linkRepository.getProductLinksByParseId(parsingId).size()+" links!");
-
-        parseProductsByParsingId(parsingId);
-
-        infoService.finished(parsingId, "Parsed "+productRepository.getProductbvinListByParseId(parsingId).size()+" products!");
+        int productsQty = productRepository.getProductsByParseId(parsingId).size();
+        double duration = infoService.minutesForAllCurrentOperations(parsingId);
+        infoService.finished(parsingId, "Parsed "+productsQty
+                +" products in "+String.format("%.2f",duration)+" minutes!"
+                +" Average speed "+String.format("%.2f",duration*60/productsQty)+" sec/product." );
 
     }
 
@@ -145,46 +156,63 @@ public class ParserService {
         infoService.inProgress(parsingId, "Product links parsing");
 
 
-        final int linksCount = links.size();
-        links.forEach((sku, productLink) -> {
+        int linksCount = 0;
+        HashSet<String> parsedSKUs = new HashSet<>();
+
+        Iterator<Map.Entry<String, ProductLink>> iterator = links.entrySet().iterator();
+        while (iterator.hasNext()) {
+
+            Map.Entry<String, ProductLink> entry = iterator.next();
+            String sku = entry.getKey();
+            ProductLink productLink = entry.getValue();
+
+
+            if(parsedSKUs.contains(sku)){
+                linksCount++;
+                infoService.inProgressUpdate(parsingId, "Parsing products - " + String.format ("%.2f", ((double) linksCount/links.size())*100) + "%");
+                continue;
+            }
 
             logger.info(sku + " - started");
 
             Document doc = null;
-
             try {
                 doc = Jsoup.connect("https://www.krollcorp.com" + productLink.getLink())
                         .cookie("Cookie", this.cookie)
                         .timeout(60 * 10000)
                         .get();
-
             } catch (IOException e) {
                 infoService.error(parsingId, "Connection error. Product link " + productLink.getLink());
                 infoService.error(parsingId, e.getMessage());
+                continue;
             }
 
             Product parentProduct = getProductFromPage(doc);
             parentProduct.setSku(sku);
 
+            ArrayList<Product> products = new ArrayList<Product>();
             Elements elem = doc.select(".isoption");
             if (elem.size() > 0) {
-                ArrayList<Product> products = createProducts(doc);
-                products.forEach(newProduct -> {
-                    newProduct.fillByParrent(parentProduct);
-                    links.remove(newProduct.getSku());
-                });
-                productRepository.save(products);
+                products = createProducts(doc);
+                products.forEach(newProduct -> { newProduct.fillByParrent(parentProduct); });
             } else {
-                productRepository.save(parentProduct);
-                links.remove(parentProduct.getSku());
+                products.add(parentProduct);
             }
+
+            products.forEach(newProduct -> {
+                parsedSKUs.add(newProduct.getSku());
+                if(productRepository.exists(newProduct.getId())){
+                    productRepository.delete(newProduct.getId());
+                }
+            });
+            productRepository.save(products);
 
             logger.info(sku + " - ok");
 
-            infoService.inProgressUpdate(parsingId, "Parsing products - " + (1 - (double)links.size()/linksCount)*100 + "%");
+            linksCount++;
+            infoService.inProgressUpdate(parsingId, "Parsing products - " + String.format ("%.2f", ((double) linksCount/links.size())*100) + "%");
 
-
-        });
+        }
 
     }
 
@@ -376,6 +404,13 @@ public class ParserService {
         product.setImageUrl(doc.select("#imgMain").attr("src"));
         product.setPrice(doc.select("#msrp").text());
         product.setBrand(doc.select(".actioncolumn").select("h2").text());
+
+        Elements groupElements = doc.select(".breadcrumbs").select(".links").select("a");
+        if(!groupElements.isEmpty()){
+            String subGroup0 = groupElements.get(groupElements.size()-2).text();
+            String subGroup1 = groupElements.get(groupElements.size()-1).text();
+            product.setProductGroup(subGroup0+" » "+subGroup1);
+        }
 
         return product;
 
