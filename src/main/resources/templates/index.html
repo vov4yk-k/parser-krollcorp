@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:dt="http://www.thymeleaf.org/dandelion/datatables">
+<head>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <style>
+        table.greyGridTable {
+          border: 2px solid #FFFFFF;
+          width: 100%;
+          text-align: center;
+          border-collapse: collapse;
+        }
+        table.greyGridTable td, table.greyGridTable th {
+          border: 1px solid #FFFFFF;
+          padding: 3px 4px;
+        }
+        table.greyGridTable tbody td {
+          font-size: 13px;
+        }
+        table.greyGridTable td:nth-child(even) {
+          background: #EBEBEB;
+        }
+        table.greyGridTable thead {
+          background: #FFFFFF;
+          border-bottom: 4px solid #333333;
+        }
+        table.greyGridTable thead th {
+          font-size: 15px;
+          font-weight: bold;
+          color: #333333;
+          text-align: center;
+          border-left: 2px solid #333333;
+        }
+        table.greyGridTable thead th:first-child {
+          border-left: none;
+        }
+
+        table.greyGridTable tfoot {
+          font-size: 14px;
+          font-weight: bold;
+          color: #333333;
+          border-top: 4px solid #333333;
+        }
+        table.greyGridTable tfoot td {
+          font-size: 14px;
+        }
+
+    </style>
+
+    <script>
+         var time = new Date().getTime();
+         $(document.body).bind("mousemove keypress", function(e) {
+             time = new Date().getTime();
+         });
+
+         function refresh() {
+             if(new Date().getTime() - time >= 6000)
+                 window.location.reload(true);
+             else
+                 setTimeout(refresh, 3000);
+         }
+
+         setTimeout(refresh, 3000);
+    </script>
+
+</head>
+<body>
+<div class="span12">
+    <table id="parsingInfosTable" dt:table="true" class="greyGridTable">
+        <thead>
+        <tr>
+            <th>Parsing ID</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Description</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="info : ${infos}">
+            <td th:text="${info?.parsingId}"></td>
+            <td th:text="${info?.date}"></td>
+            <td th:text="${info?.status}"></td>
+            <td th:text="${info?.description}"></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

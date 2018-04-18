@@ -182,7 +182,24 @@ public class ProductInfo {
         long code = 0;
         try {
             code = Long.parseLong(UPCCode);
-        }catch (ArithmeticException e){ }
+        }catch (NumberFormatException e){ }
         return code;
     }
+
+    public double getListPriceNumber() {
+        double price = 0.0;
+        try {
+            price = Double.parseDouble(this.ListPrice.replace("MSRP: $",""));
+        }catch (NumberFormatException e){ }
+        return price;
+    }
+
+    public double getMAPPriceNumber() {
+        double price = 0.0;
+        try {
+            price = Double.parseDouble(this.MAPPrice.replace("$",""));
+        }catch (NumberFormatException e){ }
+        return price;
+    }
 }
+

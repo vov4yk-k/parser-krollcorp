@@ -29,11 +29,11 @@ public class Product {
     private boolean isValid;
     private String price;                       //#msrp
     private String sku;
-    private String listPrice;
     private @Lob String shortDescription;
     private String stockMessage;
     private String brand;
-    private String MAPPrice;
+    private double listPrice;
+    private double MAPPrice;
     private double numPrice;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -42,15 +42,16 @@ public class Product {
 
     public Product(){}
 
-    public Product(long id, String productbvin, String name, String manufacturerPartNumber,
-                   boolean isHazardous, String countryofOrigin, String productWeight,
-                   String description, String imageUrl, boolean isValid, String price,
-                   String sku, String listPrice, String shortDescription, String stockMessage,
-                   String brand, String upc, String productGroup) {
-
+    public Product(long id, String upc, String productbvin, String name, String productGroup,
+                   String manufacturerPartNumber, boolean isHazardous, String countryofOrigin,
+                   String productWeight, String description, String imageUrl, boolean isValid,
+                   String price, String sku, String shortDescription, String stockMessage,
+                   String brand, double listPrice, double MAPPrice, double numPrice, Set<ProductProperty> properties) {
         this.id = id;
+        this.upc = upc;
         this.productbvin = productbvin;
         this.name = name;
+        this.productGroup = productGroup;
         this.manufacturerPartNumber = manufacturerPartNumber;
         this.isHazardous = isHazardous;
         this.countryofOrigin = countryofOrigin;
@@ -60,17 +61,18 @@ public class Product {
         this.isValid = isValid;
         this.price = price;
         this.sku = sku;
-        this.listPrice = listPrice;
         this.shortDescription = shortDescription;
         this.stockMessage = stockMessage;
         this.brand = brand;
-        this.upc = upc;
-        this.productGroup = productGroup;
+        this.listPrice = listPrice;
+        this.MAPPrice = MAPPrice;
+        this.numPrice = numPrice;
+        this.properties = properties;
     }
 
     public Product(ProductInfo productInfo){
 
-        this.id = productInfo.getUPCCodeLong();
+        this.id = generateId(productInfo);
         this.imageUrl = productInfo.getImageUrl();
         this.price = productInfo.getPrice();
         this.sku = productInfo.getSku();
@@ -78,11 +80,11 @@ public class Product {
         this.manufacturerPartNumber = productInfo.getManufacturerPartNumber();
         this.shortDescription = productInfo.getShortDescription();
         this.productWeight = productInfo.getWeight();
-        this.listPrice = productInfo.getListPrice();
+        this.listPrice = productInfo.getListPriceNumber();
         this.upc = productInfo.getUPCCode();
         this.properties = new HashSet<>();
         this.countryofOrigin = productInfo.getCountryOfOrigin();
-        this.MAPPrice = productInfo.getMAPPrice();
+        this.MAPPrice = productInfo.getMAPPriceNumber();
         this.numPrice = productInfo.getNumPrice();
         this.stockMessage = productInfo.getStockMessage();
 
@@ -188,11 +190,11 @@ public class Product {
         this.sku = sku;
     }
 
-    public String getListPrice() {
+    public double getListPrice() {
         return listPrice;
     }
 
-    public void setListPrice(String listPrice) {
+    public void setListPrice(double listPrice) {
         this.listPrice = listPrice;
     }
 
@@ -258,11 +260,11 @@ public class Product {
         productProperty.setProduct(null);
     }
 
-    public String getMAPPrice() {
+    public double getMAPPrice() {
         return MAPPrice;
     }
 
-    public void setMAPPrice(String MAPPrice) {
+    public void setMAPPrice(double MAPPrice) {
         this.MAPPrice = MAPPrice;
     }
 
@@ -324,4 +326,10 @@ public class Product {
 
         }
     }
+
+    public long generateId(ProductInfo productInfo){
+        long id_upc = productInfo.getUPCCodeLong();
+        return id_upc == 0 ? Math.abs(productInfo.getSku().hashCode()) : id_upc;
+    }
+
 }
