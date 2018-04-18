@@ -14,7 +14,8 @@ public class ParentProductResponse extends ProductResponse {
         if(variants.length > 0){
             this.setPrice(0);
             this.setQty(0);
-            this.setMsrp("");
+            this.setMsrp(0);
+            this.setMapPrice(0);
             this.setVprop(null);
             this.setImages(null);
             this.setCodes(null);

@@ -15,7 +15,8 @@ public class ProductResponse {
     private String desc;
     private int qty;
     private double price;
-    private String msrp;
+    private double msrp;
+    private double mapPrice;
     private HashMap<String,String> vprop;
     private HashMap<String,String> prop;
     private String[] images;
@@ -35,6 +36,7 @@ public class ProductResponse {
         this.images = new String[]{product.getImageUrl()};
         this.price = product.getNumPrice();
         this.msrp = product.getListPrice();
+        this.mapPrice = product.getMAPPrice();
         this.qty = product.getQty();
     }
 
@@ -135,12 +137,20 @@ public class ProductResponse {
         this.price = price;
     }
 
-    public String getMsrp() {
+    public double getMsrp() {
         return msrp;
     }
 
-    public void setMsrp(String msrp) {
+    public void setMsrp(double msrp) {
         this.msrp = msrp;
+    }
+
+    public double getMapPrice() {
+        return mapPrice;
+    }
+
+    public void setMapPrice(double mapPrice) {
+        this.mapPrice = mapPrice;
     }
 
     void setProps(Product product){
@@ -149,7 +159,6 @@ public class ProductResponse {
         this.prop.put("isHazardous",product.isHazardous()?"yes":"no");
         this.prop.put("countryofOrigin", product.getCountryofOrigin());
         this.prop.put("productWeight", product.getProductWeight());
-        this.prop.put("mapPrice", product.getMAPPrice());
 
     }
 
