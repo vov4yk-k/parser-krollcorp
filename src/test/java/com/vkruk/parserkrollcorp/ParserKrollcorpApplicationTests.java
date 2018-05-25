@@ -11,7 +11,9 @@ import org.springframework.test.context.junit4.SpringRunner;
 		"server.port=5050",
 		"db.password=root",
 		"db.schema=products",
-		"db.address=localhost"})
+		"db.address=localhost",
+		"usr.login=test",
+		"usr.password=test"})
 public class ParserKrollcorpApplicationTests {
 
 	@Test

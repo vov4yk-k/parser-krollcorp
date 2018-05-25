@@ -169,13 +169,8 @@ public class ProductInfo {
     }
 
     public double getNumPrice() {
-        double price = 0.0;
         Document doc = Jsoup.parse(this.Price);
-        try {
-            price = Double.parseDouble(doc.select("span").last().text().replace("$",""));
-        }catch (NumberFormatException e){
-        }
-        return price;
+        return strToNumber(doc.select("span").last().text());
     }
 
     public long getUPCCodeLong() {
@@ -187,19 +182,33 @@ public class ProductInfo {
     }
 
     public double getListPriceNumber() {
-        double price = 0.0;
-        try {
-            price = Double.parseDouble(this.ListPrice.replace("MSRP: $",""));
-        }catch (NumberFormatException e){ }
-        return price;
+        return strToNumber(this.ListPrice);
     }
 
     public double getMAPPriceNumber() {
-        double price = 0.0;
+        return strToNumber(this.MAPPrice);
+    }
+
+    private double strToNumber(String str){
+
+        if(str == null){
+            return 0d;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (char c : str.toCharArray()) {
+            if((c>=48 & c<=57) || c == 46){
+                builder.append(c);
+            }
+        }
+
+        double convertedNumber = 0.0;
         try {
-            price = Double.parseDouble(this.MAPPrice.replace("$",""));
+            convertedNumber = builder.length() != 0 ? Double.parseDouble(builder.toString()) : 0d;
         }catch (NumberFormatException e){ }
-        return price;
+
+        return convertedNumber;
+
     }
 }
 
